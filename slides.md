@@ -10,13 +10,11 @@ class: center, middle, inverse
 # Background
 
 ### Who are we? 
-**Centre for Strategic Infocomm Technologies (CSIT)** is an agency in MINDEF
-that builds technologies to safeguard the national security interests of
-Singapore. 
+**Centre for Strategic Infocomm Technologies (CSIT)** is an agency in MINDEF that builds technologies to safeguard the
+national security interests of Singapore. 
 
-Our team builds developer platforms and infrastructure that are used in a wide
-range of mission-critical operations, such as in counter-terrorism and computer
-network defence.
+Our team builds developer platforms and infrastructure that are used in a wide range of mission-critical operations,
+such as in counter-terrorism and computer network defence.
 
 ---
 
@@ -24,8 +22,8 @@ network defence.
 
 ### This brings about unique challenges...
 
-* Classified *low-trust* environments where complex access control and
-stringent audit logging are required for internal APIs 
+* Classified *low-trust* environments where complex access control and stringent audit logging are required for internal
+  APIs 
 
 * Increasingly more microservices but still many monolithic legacy systems running on VMs
 
@@ -37,9 +35,8 @@ Thus **Open Policy Agent (OPA)** and **Envoy**
 
 # What is OPA?
 
-Open Policy Agent is a lightweight general-purpose **policy engine** that lets
-you specify policy as code and use APIs to offload policy decision-making from
-your software.
+Open Policy Agent is a lightweight general-purpose **policy engine** that lets you specify policy as code and use APIs
+to offload policy decision-making from your software.
 
 .center.image-60[![](./images/opa-service.svg)]
 
@@ -145,8 +142,8 @@ allow = response {
 
 .footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
 
-In our setup we make authorization decisions primarily using data from OAuth access
-tokens (in the `Authorization` header)
+In our setup we make authorization decisions primarily using data from OAuth access tokens (in the `Authorization`
+header)
     * TODO: Provide example policy that involves parsing JWT for rules
         * Envoy decodes token, passes to OPA as an object, easy to then write rules using it
         * Show example where X-Auth-User is populated from JWT claim
