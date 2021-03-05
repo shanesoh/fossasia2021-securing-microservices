@@ -4,14 +4,14 @@ class: center, middle, inverse
 
 .right[[**Shane Soh**](https://www.linkedin.com/in/shane-soh/)]
 .right[Senior Software Engineer]
-.right[Ministry of Defence, Singapore]
+.right[Centre for Strategic Infocomm Technologies]
 ---
 
 # Background
 
 ### Who are we? 
-**Centre for Strategic Infocomm Technologies (CSIT)** is an agency in MINDEF that builds technologies to safeguard the
-national security interests of Singapore. 
+**Centre for Strategic Infocomm Technologies (CSIT)** is an agency in the Ministry of Defence that builds technologies
+to safeguard the national security interests of Singapore. 
 
 Our team builds developer platforms and infrastructure that are used in a wide range of mission-critical operations,
 such as in counter-terrorism and computer network defence.
@@ -55,12 +55,11 @@ based on OPA's policy decisions.
 
 # Putting Them Together
 
-.center[![](./images/diagram.png)]
-TODO: flip diagram around so request comes from top
+.center[![](./images/diagram.svg)]
 
-* Envoy and OPA are deployed alongside service
+* Teams are expected to deploy Envoy and OPA alongside their service
 
-* An incoming request first goes to Envoy which checks with OPA whether said request should be allowed through
+* All incoming requests first go to Envoy which checks with OPA whether each request should be allowed through
 
 * Upstream service can simply assume any request that arrives is authorized as per OPA policies
 
@@ -73,7 +72,7 @@ TODO: flip diagram around so request comes from top
 `docker-compose.yml`
 ```yaml
   opa:
-    image: openpolicyagent/opa:0.21.1-istio
+    image: openpolicyagent/opa:0.26.0-envoy
     volumes:
       - ./policy.rego:/config/policy.rego
     command:
@@ -86,7 +85,8 @@ TODO: flip diagram around so request comes from top
       - "/config/policy.rego"
 ```
 
-* `envoy` tagged OPA image uses opa-envoy-plugin which extends OPA with a gRPC that implements the Envoy ext_authz API. 
+* `envoy` tagged OPA image uses [opa-envoy-plugin](https://github.com/open-policy-agent/opa-envoy-plugin) which extends
+OPA with a gRPC server that implements the Envoy External Authorization (`ext_authz`) API. 
 
 ---
 
@@ -104,7 +104,7 @@ TODO: flip diagram around so request comes from top
       - ./envoy.yaml:/config/envoy.yaml
     environment:
       - DEBUG_LEVEL=info
-      - SERVICE_NAME=app
+      - SERVICE_NAME=app  # should match name of upstream service
       - SERVICE_PORT=80
 ```
 
@@ -118,8 +118,8 @@ TODO: flip diagram around so request comes from top
 .footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
 
 `policy.rego`
-```shell
-package istio.authz
+```c
+package envoy.authz
 
 import input.attributes.request.http as http_request
 
@@ -133,7 +133,8 @@ allow = response {
   }
 }
 ```
-
+* By default `opa-envoy-plugin` uses `envoy/authz/allow` as the policy decision path
+	* Policy decision can be boolean or an object (as in this case)
 * Toy policy to only allow GET requests and add additional header for `X-Auth-User`
 
 ---
@@ -142,24 +143,54 @@ allow = response {
 
 .footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
 
-In our setup we make authorization decisions primarily using data from OAuth access tokens (in the `Authorization`
-header)
-    * TODO: Provide example policy that involves parsing JWT for rules
-        * Envoy decodes token, passes to OPA as an object, easy to then write rules using it
-        * Show example where X-Auth-User is populated from JWT claim
-
 ```shell
-package istio.authz
+# This is allowed
+$ curl -X GET http://localhost:8080/anything
+{
+  ...
+  "headers": {
+	...
+    "X-Auth-User": "1234", 
+	...
+  }, 
+  ...
+  "method": "GET", 
+}
 
-import input.attributes.request.http as http_request
+
+# This gets denied
+$ curl -X POST http://localhost:8080/anything
+```
+
+---
+
+# Sample Project
+
+.footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
+
+In our setup we make authorization decisions primarily using OAuth2 access tokens
+
+```c
+# ...truncated...
 
 default allow = false
 
+token = payload {
+  # Access token in `Authorization: Bearer <token>` header
+  [_, encoded] := split(http_request.headers.authorization, " ")
+  [_, payload, _] := io.jwt.decode(encoded)
+}
+
 allow = response {
-  http_request.method == "GET"
+  # Check access token contains `read` permission to `myapp`
+  token.resource_access["myapp"].roles[_] == "read"
+
   response := {
       "allowed": true,
-      "headers": {"X-Auth-User": "1234"}
+      "headers": {
+        "X-User-Id": token.user_id,
+        "X-Given-Name": token.given_name
+      }
   }
 }
 ```
@@ -167,8 +198,6 @@ allow = response {
 ---
 
 # Why Do We Like OPA?
-
---
 
 * Manage policy as code
     * Written in Rego
@@ -178,22 +207,20 @@ allow = response {
 
 * Decouple policy decision-making from policy enforcement
     * Authorization logic written outside of service instead of it peppered all over the code
-        * Separation of concerns: Developers focus on "business logic" assuming authorization is handled
+        * Separation of concerns: Developers focus on writing application logic assuming authorization is handled
     * Facilitates discoverability, reuse and governance
-    * Policies can be changed and reloaded without restarting service
 
 --
 
 * Centralised management APIs
     * Policy distribution via bundles APIs
+    	* Policies can reloaded without restarting service
     * Collection of telemetry 
-        * e.g. Decision logs that are clearly separated from application logs (for audit purposes)
+        * e.g. Decision logs (that are clearly separated from application logs)
 
 ---
 
 # Why Do We Like Envoy?
-
---
 
 * Filters to implement common functionalities
     * External Authorization (`ext_authz`) to OPA
