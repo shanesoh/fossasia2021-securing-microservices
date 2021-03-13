@@ -47,8 +47,8 @@ to offload policy decision-making from your software.
 
 Envoy is an open source edge and service proxy designed for cloud-native applications.
 
-For our purpose, Envoy is used to delegate authorization decisions to OPA, allowing/denying requests to the upstream
-service based on OPA's policy decisions.
+For our purpose, Envoy is used to delegate authorization decisions to OPA, allowing/denying requests to the service
+based on OPA's policy decisions.
 
 ---
 
@@ -60,7 +60,7 @@ service based on OPA's policy decisions.
 
 * All incoming requests first go to Envoy which checks with OPA whether each request should be allowed through
 
-* Upstream service can simply assume any request that arrives is authorized as per OPA policies
+* Service can simply assume any request that arrives is authorized as per OPA policies
 
 ---
 
@@ -79,7 +79,7 @@ service based on OPA's policy decisions.
       - ./envoy.yaml:/config/envoy.yaml
     environment:
       - DEBUG_LEVEL=info
-      - SERVICE_NAME=app  # should match name of upstream service
+      - SERVICE_NAME=app  # should match name of underlying service
       - SERVICE_PORT=80
 
   app:
@@ -89,7 +89,7 @@ service based on OPA's policy decisions.
 
 * Built Envoy image does environment variable substitution for `envoy.yaml`
     * To simplify adoption as Envoy config can be rather complex
-* httpbin as a mock upstream service
+* httpbin as a mock service
 
 ---
 
@@ -214,7 +214,7 @@ allow = response {
 * Decouple policy decision-making from policy enforcement
     * Authorization logic written outside of service instead of it peppered all over the code
         * Separation of concerns: Developers focus on writing application logic assuming authorization is handled
-    * Policies can be reloaded without restarting upstream service
+    * Policies can be reloaded without restarting underlying service
     * Facilitates discoverability, reuse and governance
 
 --
