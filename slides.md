@@ -172,7 +172,7 @@ $ curl -X POST http://localhost:8080/anything
 
 .footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
 
-In our actual setup we make authorization decisions primarily using OAuth2 access tokens
+In our actual setup we make authorization decisions primarily using OAuth2/OIDC access tokens
 
 ```c
 # ...truncated...
@@ -231,7 +231,7 @@ allow = response {
 
 * Filters to implement common functionalities
     * External Authorization (`ext_authz`) to OPA
-    * But also JWT Authentication (`jwt_authn`) filter to validate OAuth2 access tokens
+    * But also JWT Authentication (`jwt_authn`) filter to validate access tokens
 
 --
 
