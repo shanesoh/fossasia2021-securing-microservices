@@ -13,8 +13,8 @@ class: center, middle, inverse
 **Centre for Strategic Infocomm Technologies (CSIT)** is an agency in the Ministry of Defence that builds technologies
 to safeguard the national security interests of Singapore. 
 
-Our team builds developer platforms and infrastructure that are used in a wide range of mission-critical operations,
-such as in counter-terrorism and computer network defence.
+Our team builds **platforms and infrastructure** that support a wide range of mission-critical operations, such as in
+counter-terrorism and computer network defence.
 
 ---
 
@@ -22,12 +22,11 @@ such as in counter-terrorism and computer network defence.
 
 ### This brings about unique challenges...
 
-* Classified *low-trust* environments where complex access control and stringent audit logging are required for internal
-  APIs 
+* Classified *low-trust* environments where complex access control and audit logging are required for internal APIs 
 
-* Increasingly more microservices but still many monolithic legacy systems running on VMs
+* Increasingly more microservices but still have many monolithic legacy systems running on VMs
 
-* Need for API security that is easy to implement and to reason with
+* Need API security that is easy to implement and to reason with
 
 Thus **Open Policy Agent (OPA)** and **Envoy**
 
@@ -48,8 +47,8 @@ to offload policy decision-making from your software.
 
 Envoy is an open source edge and service proxy designed for cloud-native applications.
 
-For our purpose, Envoy is used to delegate authz decisions to OPA, allowing/denying requests to the upstream service
-based on OPA's policy decisions.
+For our purpose, Envoy is used to delegate authorization decisions to OPA, allowing/denying requests to the upstream
+service based on OPA's policy decisions.
 
 ---
 
@@ -71,31 +70,7 @@ based on OPA's policy decisions.
 
 `docker-compose.yml`
 ```yaml
-  opa:
-    image: openpolicyagent/opa:0.26.0-envoy
-    volumes:
-      - ./policy.rego:/config/policy.rego
-    command:
-      - "run"
-      - "--log-level=debug"
-      - "--log-format=json-pretty"
-      - "--server"
-      - "--set=plugins.envoy_ext_authz_grpc.addr=:9191"
-      - "--set=decision_logs.console=true"
-      - "/config/policy.rego"
-```
-
-* `envoy` tagged OPA image uses [opa-envoy-plugin](https://github.com/open-policy-agent/opa-envoy-plugin) which extends
-OPA with a gRPC server that implements the Envoy External Authorization (`ext_authz`) API. 
-
----
-
-# Sample Project
-
-.footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
-
-`docker-compose.yml`
-```yaml
+...
   envoy:
     build: ./compose/envoy
     ports:
@@ -106,10 +81,41 @@ OPA with a gRPC server that implements the Envoy External Authorization (`ext_au
       - DEBUG_LEVEL=info
       - SERVICE_NAME=app  # should match name of upstream service
       - SERVICE_PORT=80
+
+  app:
+    image: kennethreitz/httpbin:latest
+...
 ```
 
 * Built Envoy image does environment variable substitution for `envoy.yaml`
     * To simplify adoption as Envoy config can be rather complex
+* httpbin as a mock upstream service
+
+---
+
+# Sample Project
+
+.footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
+
+`docker-compose.yml`
+```yaml
+...
+  opa:
+    image: openpolicyagent/opa:0.26.0-envoy
+    volumes:
+      - ./policy.rego:/config/policy.rego
+    command:
+      - "run"
+      - "--log-level=debug"
+      - "--log-format=json-pretty"
+      - "--server"
+      - "--set=decision_logs.console=true"
+      - "/config/policy.rego"
+...
+```
+
+* OPA-Envoy image uses [opa-envoy-plugin](https://github.com/open-policy-agent/opa-envoy-plugin) which extends OPA with
+  a gRPC server that implements the Envoy External Authorization (`ext_authz`) API. 
 
 ---
 
@@ -133,8 +139,7 @@ allow = response {
   }
 }
 ```
-* By default `opa-envoy-plugin` uses `envoy/authz/allow` as the policy decision path
-	* Policy decision can be boolean or an object (as in this case)
+* Policy decision can be boolean or an object (as in this case)
 * Toy policy to only allow GET requests and add additional header for `X-Auth-User`
 
 ---
@@ -157,7 +162,6 @@ $ curl -X GET http://localhost:8080/anything
   "method": "GET", 
 }
 
-
 # This gets denied
 $ curl -X POST http://localhost:8080/anything
 ```
@@ -168,7 +172,7 @@ $ curl -X POST http://localhost:8080/anything
 
 .footnote[[github.com/shanesoh/envoy-opa-compose](https://github.com/shanesoh/envoy-opa-compose)]
 
-In our setup we make authorization decisions primarily using OAuth2 access tokens
+In our actual setup we make authorization decisions primarily using OAuth2 access tokens
 
 ```c
 # ...truncated...
@@ -199,6 +203,8 @@ allow = response {
 
 # Why Do We Like OPA?
 
+--
+
 * Manage policy as code
     * Written in Rego
     * Declarative; relatively easy to read, write and test
@@ -208,13 +214,14 @@ allow = response {
 * Decouple policy decision-making from policy enforcement
     * Authorization logic written outside of service instead of it peppered all over the code
         * Separation of concerns: Developers focus on writing application logic assuming authorization is handled
+    * Policies can be reloaded without restarting upstream service
     * Facilitates discoverability, reuse and governance
 
 --
 
 * Centralised management APIs
     * Policy distribution via bundles APIs
-    	* Policies can reloaded without restarting service
+        * Especially universal policies
     * Collection of telemetry 
         * e.g. Decision logs (that are clearly separated from application logs)
 
@@ -233,14 +240,14 @@ allow = response {
         * With OPA, useful for tacking on access control to services that don't have them
     * Containerised for Docker or k8s
         * At the same time easy to run on the host for legacy applications
-        * Possible to auto inject as k8s sidecars
+        * Possible to auto inject as k8s sidecars 
 
 --
 
-* "Gateway" to service mesh
+* Future-proofing
     * Currently east-west traffic goes through API gateway which provides functionalities like traffic control and
       logging centrally
-    * Eases potential adoption of service mesh: Move functionalities into Envoy and use Istio as control plane
+    * Eases potential adoption of service mesh: Move functionalities into Envoy sidecars and use Istio as control plane
 
 ---
 class: left, middle, inverse
@@ -251,3 +258,4 @@ class: left, middle, inverse
 <i class="fab fa-github"></i> [shanesoh](https://github.com/shanesoh)
 
 ### We're Hiring! [csit.gov.sg](https://www.csit.gov.sg)
+#### Software Engineer (Infrastructure) [go.gov.sg/csit-swe-infra](https://go.gov.sg/csit-swe-infra)
