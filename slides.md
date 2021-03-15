@@ -109,6 +109,7 @@ based on OPA's policy decisions.
       - "--log-level=debug"
       - "--log-format=json-pretty"
       - "--server"
+      - "--set=plugins.envoy_ext_authz_grpc.path=envoy/authz/allow"
       - "--set=decision_logs.console=true"
       - "/config/policy.rego"
 ...
